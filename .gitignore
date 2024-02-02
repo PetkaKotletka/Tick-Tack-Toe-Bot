@@ -1,0 +1,4 @@
+*.txt
+*.sh
+images/
+.vscode/
