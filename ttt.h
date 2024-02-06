@@ -157,6 +157,7 @@ public:
         lastMinX = -1; lastMinY = -1; lastMaxX = -1; lastMaxY = -1;
         minX = boardSize; minY = boardSize;
         maxX = -1; maxY = -1;
+        positionEvaluation = 0; prevPositionEvaluation = 0;
     }
     
     bool isMoveX() { 
@@ -173,14 +174,14 @@ public:
 
     void move(int x, int y) {
         if (board[x][y] == 0) {
+            prevPositionEvaluation = positionEvaluation;
+            positionEvaluation -= evaluateMove(x, y);
             board[x][y] = moveX ? 1 : 2;
+            positionEvaluation += evaluateMove(x, y);
             moveX = !moveX;
             lastX = x;
             lastY = y;
-            lastMinX = minX; lastMinY = minY;
-            lastMaxX = maxX; lastMaxY = maxY;
-            minX = std::min(minX, x); minY = std::min(minY, y);
-            maxX = std::max(maxX, x); maxY = std::max(maxY, y);
+            updateBounds();
         }
     }
 
@@ -217,7 +218,8 @@ public:
     }
 
 private:
-    const int maxDistToMove = 2, maxDistToCheck = 3, maxDepth = 4;
+    const int maxDistToMove = 2, maxDistToCheck = 3;
+    const int maxDepth = 4;
     const int inf = 100000;
     const int randomNoise = 5;
     const std::vector<std::pair<int, int>> group = {{inf, inf}, {1000, 1300}, {80, 180}, {60, 220}, {10, 25}}; // TODO
@@ -245,70 +247,57 @@ private:
         {{0, 0, 0, 1, 1, 0}, group[4].first, group[4].second}, {{0, 0, 0, 2, 2, 0}, -group[4].first, -group[4].second}
     };
 
+    int positionEvaluation, prevPositionEvaluation;
+
     int boardSize, toWin;
     int lastX, lastY;
     int lastMinX, lastMinY, lastMaxX, lastMaxY;
     int minX, minY, maxX, maxY;
     bool moveX;
+
     std::vector<std::vector<int>> board;
     std::vector<int> results;
     Automatum* automatum = nullptr;
 
-    void revert(int x, int y, int miX, int miY, int maX, int maY) {
+    void revert(int x, int y, int miX, int miY, int maX, int maY, int prevPos) {
         if (lastX != -1 && lastY != -1) {
             board[lastX][lastY] = 0;
         }
-        minX = lastMinX; maxX = lastMaxX;
-        minY = lastMinY; maxY = lastMaxY;
-        lastMinX = miX; lastMinY = miY; lastMaxX = maX; lastMaxY = maY;
+        revertBounds(miX, miY, maX, maY);
         lastX = x; lastY = y;
+        positionEvaluation = prevPos;
         moveX = !moveX;
     }
 
-    /*
-    int evaluateMove(int x, int y) {
-        int answer1, answer2, score;
-
-        // check for X
-        board[x][y] = 1;
-        automatum->processText(board, x - toWin, y, x + toWin, y, 1, 0, true, true);
-        automatum->processText(board, x, y - toWin, x, y + toWin, 0, 1, true, true);
-        automatum->processText(board, x - toWin, y - toWin, x + toWin, y + toWin, 1, 1, true, true);
-        automatum->processText(board, x - toWin, y + toWin, x + toWin, y - toWin, 1, -1, true, false);
-        automatum->getResults(results);
-        answer1 = 0;
-        for (int i = 0; i < patterns.size(); ++i) {
-            score = patterns[i].scoreX;
-            if (results[i] != 0 && (score == inf || score == -inf)) {
-                answer1 = score;
-                break;
-            } else {
-                answer1 += results[i] * score;
-            }
-        }
-
-        // check for O
-        board[x][y] = 2;
-        automatum->processText(board, x - toWin, y, x + toWin, y, 1, 0, true, true);
-        automatum->processText(board, x, y - toWin, x, y + toWin, 0, 1, true, true);
-        automatum->processText(board, x - toWin, y - toWin, x + toWin, y + toWin, 1, 1, true, true);
-        automatum->processText(board, x - toWin, y + toWin, x + toWin, y - toWin, 1, -1, true, false);
-        automatum->getResults(results);
-        answer2 = 0;
-        for (int i = 0; i < patterns.size(); ++i) {
-            score = patterns[i].scoreO;
-            if (results[i] != 0 && (score == inf || score == -inf)) {
-                answer2 = score;
-                break;
-            } else {
-                answer2 += results[i] * score;
-            }
-        }
-
-        board[x][y] = 0;
-        return std::max(std::abs(answer1), std::abs(answer2));
+    void updateBounds() {
+        lastMinX = minX; lastMinY = minY;
+        lastMaxX = maxX; lastMaxY = maxY;
+        minX = std::min(minX, lastX); minY = std::min(minY, lastY);
+        maxX = std::max(maxX, lastX); maxY = std::max(maxY, lastY);
     }
-    */
+
+    void revertBounds(int miX, int miY, int maX, int maY) {
+        minX = lastMinX; maxX = lastMaxX;
+        minY = lastMinY; maxY = lastMaxY;
+        lastMinX = miX; lastMinY = miY; lastMaxX = maX; lastMaxY = maY;
+    }
+
+    int evaluateMove(int x, int y) {
+        automatum->processText(board, x - toWin, y, x + toWin, y, 1, 0, true, true);
+        automatum->processText(board, x, y - toWin, x, y + toWin, 0, 1, true, true);
+        automatum->processText(board, x - toWin, y - toWin, x + toWin, y + toWin, 1, 1, true, true);
+        automatum->processText(board, x - toWin, y + toWin, x + toWin, y - toWin, 1, -1, true, false);
+        automatum->getResults(results);
+
+        int answer = 0;
+        for (int i = 0; i < patterns.size(); ++i) {
+            if (results[i] != 0) {
+                answer += results[i] > 1 ? patterns[i].more : patterns[i].once;
+            }
+        }
+
+        return answer;
+    }
 
     int evaluatePosition() {
         for (int y = minY - maxDistToCheck; y <= maxY + maxDistToCheck; ++y) {
@@ -390,6 +379,7 @@ private:
 
     bool moveIfCanWin(Game &machine) {
         int x, y, miX, maX, miY, maY;
+        int lastEval = machine.positionEvaluation;
         machine.getLastMove(x, y);
         miX = lastMinX; miY = lastMinY; maX = lastMaxX; maY = lastMaxY;
         for (const auto& curMove : machine.getAvailableMoves()) {
@@ -398,19 +388,22 @@ private:
                 move(curMove.first, curMove.second);
                 return true;
             }
-            machine.revert(x, y, miX, miY, maX, maY);
+            machine.revert(x, y, miX, miY, maX, maY, lastEval);
         }
         return false;
     }
 
     int getBestScore(Game &machine, int depth, std::pair<int, int>& nextMove, int alpha, int beta) {
-        if (machine.checkWin()) {
-            return machine.isMoveX() ? -inf : inf;
+        if (machine.positionEvaluation >= inf) {
+            return inf;
+        } else if (machine.positionEvaluation <= -inf) {
+            return -inf;
+        } else if (depth >= maxDepth) {
+            return std::min(inf, std::max(-inf, machine.positionEvaluation));
         }
-        if (depth >= maxDepth) {
-            return machine.evaluatePosition();
-        }
-        int x, y, score, miX, maX, miY, maY;
+        int x, y, score;
+        int miX, maX, miY, maY;
+        int lastEval = machine.positionEvaluation;
         machine.getLastMove(x, y);
         miX = lastMinX; miY = lastMinY; maX = lastMaxX; maY = lastMaxY;
         int bestScore = machine.isMoveX() ? -inf : inf;
@@ -423,7 +416,7 @@ private:
         for (const auto& move : moves) {
             machine.move(move.first, move.second);
             score = getBestScore(machine, depth + 1, nextMove, alpha, beta);
-            machine.revert(x, y, miX, miY, maX, maY);
+            machine.revert(x, y, miX, miY, maX, maY, lastEval);
             if (machine.isMoveX()) {
                 if (score > bestScore) {
                     bestScore = score;
