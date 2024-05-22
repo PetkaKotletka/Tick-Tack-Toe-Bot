@@ -33,10 +33,6 @@ After compiling the program, run the executable `tic_tac_toe` to start the game.
 
 Contributions to this project are welcome. If you find any issues or have suggestions for improvements, feel free to open an issue or create a pull request on the GitHub repository.
 
-## License
-
-This project is licensed under the [MIT License](LICENSE). Feel free to use and modify it according to your needs.
-
 ---
 
 **Note:** This project was created for educational purposes and as a demonstration of basic AI algorithms. Enjoy playing Tic-Tac-Toe!
