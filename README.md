@@ -1,4 +1,4 @@
-# Tic-Tac-Toe Game with AI
+# Tic-Tac-Toe Bot
 
 This project is a simple implementation of the classic game Tic-Tac-Toe, where players can compete against a computer opponent. The game is written in C++ using OpenGL and GLUT libraries for graphics rendering and user interaction.
 
@@ -35,4 +35,4 @@ Contributions to this project are welcome. If you find any issues or have sugges
 
 ---
 
-**Note:** This project was created for educational purposes and as a demonstration of basic AI algorithms. Enjoy playing Tic-Tac-Toe!
+**Note:** This project was created for educational purposes and as a demonstration of advanced algorithms on C++. Enjoy playing Tic-Tac-Toe!
